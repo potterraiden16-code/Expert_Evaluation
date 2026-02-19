@@ -7,8 +7,38 @@ import os
 st.set_page_config(
     page_title="德尔菲法专家评价系统 v4.2",
     layout="wide",
-    initial_sidebar_state="expanded"
+    initial_sidebar_state="expanded" # 默认展开，防止专家进来找不到操作台
 )
+
+# 自定义 CSS：增强侧边栏开关的可见性
+st.markdown("""
+    <style>
+    /* 强制显示侧边栏开关按钮，并加深颜色 */
+    .st-emotion-cache-15ec60u {
+        background-color: #1f77b4 !important;
+        color: white !important;
+        border-radius: 0 5px 5px 0 !important;
+    }
+    
+    /* 隐藏 Streamlit 官方水印 */
+    #MainMenu {visibility: hidden;}
+    footer {visibility: hidden;}
+    header {visibility: hidden;}
+    
+    /* 侧边栏按钮的容器 */
+    [data-testid="stSidebarCollapseButton"] {
+        background-color: #f0f2f6;
+        border: 1px solid #d1d5db;
+    }
+
+    .stSlider {padding-bottom: 20px;}
+    .section-header {color: #1f77b4; border-bottom: 2px solid #1f77b4; padding-bottom: 5px; margin-top: 5px; margin-bottom: 15px; font-weight: bold; font-size: 1.1rem;}
+    .status-box {padding: 12px; border-radius: 8px; margin-bottom: 15px; text-align: center; font-weight: bold; font-size: 0.9rem;}
+    .pending {background-color: #fff3cd; color: #856404; border: 1px solid #ffeeba;}
+    .completed {background-color: #d4edda; color: #155724; border: 1px solid #c3e6cb;}
+    .anchor-box {background-color: #f9f9f9; padding: 10px; border-radius: 5px; border-left: 4px solid #1f77b4; font-size: 0.85rem; margin-bottom: 5px;}
+    </style>
+    """, unsafe_allow_html=True)
 
 # 隐藏 Streamlit 官方水印，增强独立软件感
 st.markdown("""
@@ -163,3 +193,4 @@ if current_doc_id:
                 st.error(f"❌ 报错：{e}")
 else:
     st.info("💡 请在左侧选择一篇文献开始评审。")
+
