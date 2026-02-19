@@ -3,45 +3,21 @@ import pandas as pd
 import datetime
 import os
 
-# --- 1. 页面配置 ---
+# --- 1. 页面配置：增加隐藏菜单的逻辑 ---
 st.set_page_config(
     page_title="德尔菲法专家评价系统 v4.2",
     layout="wide",
-    initial_sidebar_state="expanded"  # 默认展开，确保护理专家进来能看到操作台
+    initial_sidebar_state="expanded"
 )
 
-# --- 【关键修复】自定义样式：隐藏无用 UI 但强制保留折叠开关 ---
+# 自定义 CSS：除了美化，还隐藏了 Streamlit 官方的各种标签
 st.markdown("""
     <style>
-    /* 1. 隐藏右上角的 Deploy 按钮、官方菜单 (MainMenu) 和状态小部件 */
-    [data-testid="stStatusWidget"], 
-    #MainMenu, 
-    header[data-testid="stHeader"] .st-emotion-cache-1px9707,
-    [data-testid="stAppDeployButton"] {
-        display: none !important;
-    }
-
-    /* 2. 移除顶部页眉的背景色和底边线，使其透明，减少干扰 */
-    header[data-testid="stHeader"] {
-        background-color: rgba(0,0,0,0) !important;
-        border-bottom: none !important;
-    }
-
-    /* 3. 【强制显示开关】针对左侧折叠按钮（小箭头）进行美化并确保可见 */
-    [data-testid="stSidebarCollapseButton"] {
-        visibility: visible !important;
-        color: #1f77b4 !important;
-        background-color: #f0f2f6 !important;
-        border: 1px solid #d1d5db !important;
-        margin-top: 10px;
-        margin-left: 5px;
-        border-radius: 5px !important;
-    }
-
-    /* 4. 隐藏底部的 "Made with Streamlit" */
+    /* 隐藏右上角的菜单按钮和底部的 Made with Streamlit */
+    #MainMenu {visibility: hidden;}
     footer {visibility: hidden;}
-
-    /* 5. 保持你喜欢的原有科研质感样式 */
+    header {visibility: hidden;}
+    
     .stSlider {padding-bottom: 20px;}
     .section-header {color: #1f77b4; border-bottom: 2px solid #1f77b4; padding-bottom: 5px; margin-top: 5px; margin-bottom: 15px; font-weight: bold; font-size: 1.1rem;}
     .status-box {padding: 12px; border-radius: 8px; margin-bottom: 15px; text-align: center; font-weight: bold; font-size: 0.9rem;}
@@ -50,7 +26,6 @@ st.markdown("""
     .anchor-box {background-color: #f9f9f9; padding: 10px; border-radius: 5px; border-left: 4px solid #1f77b4; font-size: 0.85rem; margin-bottom: 5px;}
     </style>
     """, unsafe_allow_html=True)
-
 
 # --- 2. 数据处理与状态检查 ---
 @st.cache_data
@@ -75,7 +50,7 @@ df = load_data()
 reviewed_ids = get_reviewed_ids()
 results_file = "expert_evaluations.csv"
 
-# --- 3. 侧边栏 (保留你喜欢的设计) ---
+# --- 3. 侧边栏 ---
 with st.sidebar:
     st.title("👨‍🔬 评审工作台")
     expert_name = st.text_input("评审专家姓名：", placeholder="请输入您的姓名")
@@ -88,7 +63,7 @@ with st.sidebar:
         current_doc_id = option_map[selected_display]
         row = df[df['ID'] == current_doc_id].iloc[0]
         st.write(f"总体进度: **{len(reviewed_ids)} / {len(raw_options)}**")
-
+    
     st.divider()
     if os.path.exists(results_file):
         with open(results_file, "rb") as f:
@@ -96,11 +71,9 @@ with st.sidebar:
 
 # --- 4. 主界面：状态提示 ---
 if current_doc_id in reviewed_ids:
-    st.markdown(f'<div class="status-box completed">✅ 文献 {current_doc_id} 已评价（数据已保存）</div>',
-                unsafe_allow_html=True)
+    st.markdown(f'<div class="status-box completed">✅ 文献 {current_doc_id} 已评价（数据已保存）</div>', unsafe_allow_html=True)
 else:
-    st.markdown(f'<div class="status-box pending">⏳ 待处理：阅读内容后请切换至“评估量表”标签完成评分</div>',
-                unsafe_allow_html=True)
+    st.markdown(f'<div class="status-box pending">⏳ 待处理：阅读内容后请切换至“评估量表”标签完成评分</div>', unsafe_allow_html=True)
 
 # --- 5. 四标签沉浸式布局 ---
 tab_evid, tab_ai, tab_author, tab_score = st.tabs(["📄 原始证据", "🧠 AI 推演", "📖 原文结论", "✍️ 评估量表"])
@@ -116,44 +89,36 @@ with tab_author:
 
 with tab_score:
     with st.form("delphi_full_form"):
-        st.markdown('<div class="section-header">第一部分：具体科研能力维度的定量评分 (1-10分)</div>',
-                    unsafe_allow_html=True)
+        st.markdown('<div class="section-header">第一部分：定量评分 (1-10分)</div>', unsafe_allow_html=True)
 
-        # --- 维度 1 ---
         st.write("1. **逻辑严密性与简约性**")
-        st.markdown('<div class="anchor-box">⚓ 1-2: 逻辑断层 | 5: 常规推导合理 | 9-10: 链条细致且简洁优雅</div>', unsafe_allow_html=True)
+        st.markdown('<div class="anchor-box"><b>锚点：</b>1-2分逻辑断层；5分常规推导合理；9-10分链条极度细致优雅且路径简洁。</div>', unsafe_allow_html=True)
         s1 = st.slider("维度1评分", 0, 10, 0, label_visibility="collapsed")
 
-        # --- 维度 2 ---
         st.write("2. **生物学合理性与深度**")
-        st.markdown('<div class="anchor-box">⚓ 1-2: 基础常识错误 | 5: 符合权威描述 | 9-10: 跨学科机制深度极高</div>', unsafe_allow_html=True)
+        st.markdown('<div class="anchor-box"><b>锚点：</b>1-2分基础常识错误（AI幻觉）；5分符合主流权威描述；9-10分准确调用前沿机制，深度极高。</div>', unsafe_allow_html=True)
         s2 = st.slider("维度2评分", 0, 10, 0, label_visibility="collapsed")
 
-        # --- 维度 3 ---
         st.write("3. **证据整合力（含负向结果）**")
-        st.markdown('<div class="anchor-box">⚓ 1-2: 忽略关键数据 | 5: 显著指标合理解释 | 9-10: 挖掘隐性/非线性关联</div>', unsafe_allow_html=True)
+        st.markdown('<div class="anchor-box"><b>锚点：</b>1-2分忽略关键数据；5分利用主要指标合理解释；9-10分挖掘隐性关联，对复杂数据给出自洽推论。</div>', unsafe_allow_html=True)
         s3 = st.slider("维度3评分", 0, 10, 0, label_visibility="collapsed")
 
-        # --- 维度 4 ---
         st.write("4. **转化洞察力与可行性**")
-        st.markdown('<div class="anchor-box">⚓ 1-2: 纯复述/废话 | 5: 符合临床常规 | 9-10: 具挑战性新假说且极其具体</div>', unsafe_allow_html=True)
+        st.markdown('<div class="anchor-box"><b>锚点：</b>1-2分纯数据复述（废话）；5分建议符合临床常规；9-10分提供具转化潜力的新假说且具体。</div>', unsafe_allow_html=True)
         s4 = st.slider("维度4评分", 0, 10, 0, label_visibility="collapsed")
 
-        # --- 第二部分 ---
-        st.markdown('<div class="section-header">第二部分：人类科学家对比水准 (1-10分)</div>', unsafe_allow_html=True)
-        st.markdown('<div class="anchor-box">9-10卓越(NSC级); 7-8.9优秀(教授); 5-6.9合格(博士/副教授); 3-4.9欠佳; 1-2.9不合格</div>', unsafe_allow_html=True)
+        st.markdown('<div class="section-header">第二部分：人类对比水准 (1-10分)</div>', unsafe_allow_html=True)
+        st.markdown('<div class="anchor-box">9-10卓越(NSC级讨论深度)；7-8.9优秀(资深教授)；5-6.9合格(博士/副教授)；3-4.9欠佳；1-2.9不合格。</div>', unsafe_allow_html=True)
         s_human = st.slider("人机对比评分", 0.0, 10.0, 0.0, step=0.1, label_visibility="collapsed")
 
-        # --- 第三部分 ---
         st.markdown('<div class="section-header">第三部分：定性评估</div>', unsafe_allow_html=True)
         consistency = st.selectbox("1. 一致性评价：", ["高度一致", "基本一致", "存在偏差", "严重违背"])
         highlights = st.text_area("2. 亮点分析：哪个环节展现了超越人类基准线的洞察力？")
-        risks = st.text_area("3. 局限与风险：是否存在幻觉、过度推断？")
-        value = st.text_area("4. 科学价值与转化建议：是否值得启动实验验证？")
+        risks = st.text_area("3. 局限与风险：是否存在幻觉、过度推断或胡说八道？")
+        value = st.text_area("4. 科学价值与建议：是否值得启动进一步验证？")
 
-        # --- 第四部分 ---
         st.markdown('<div class="section-header">第四部分：科学图灵测试</div>', unsafe_allow_html=True)
-        turing_test = st.radio("您是否倾向于认为这出自一位资深科学家之手？", ["肯定会", "可能会", "中立", "不太可能", "绝无可能"], horizontal=True)
+        turing_test = st.radio("您是否认为此推论出自深耕该领域10年以上的资深科学家之手？", ["肯定会", "可能会", "中立", "不太可能", "绝无可能"], horizontal=True)
 
         submit_button = st.form_submit_button("🚀 提交完整德尔菲评价表", use_container_width=True)
 
