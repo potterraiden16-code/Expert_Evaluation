@@ -3,6 +3,7 @@ import pandas as pd
 import datetime
 import os
 import time
+import io  # 必须引入 io 处理字节流
 
 # --- 1. 页面配置 ---
 st.set_page_config(
@@ -24,7 +25,7 @@ st.markdown("""
     """, unsafe_allow_html=True)
 
 
-# --- 2. 数据处理与状态检查 (必要修改：增加专家隔离逻辑) ---
+# --- 2. 数据处理与状态检查 ---
 @st.cache_data
 def load_data():
     try:
@@ -34,7 +35,6 @@ def load_data():
         return pd.DataFrame()
 
 def get_expert_dir(name):
-    """必要修改：解决并发冲突，为每个专家创建文件夹"""
     if not name or name.strip() == "": return None
     safe_name = "".join([c for c in name if c.isalnum() or c in (" ", "_")]).strip()
     path = f"results_{safe_name}"
@@ -42,18 +42,17 @@ def get_expert_dir(name):
     return path
 
 def get_reviewed_ids(expert_name):
-    """必要修改：从专家文件夹读取进度"""
     path = get_expert_dir(expert_name)
     if not path: return []
     reviewed = []
-    for file in os.listdir(path):
-        if file.endswith(".csv"):
-            reviewed.append(file.split("_")[0])
+    if os.path.exists(path):
+        for file in os.listdir(path):
+            if file.endswith(".csv"):
+                reviewed.append(file.split("_")[0])
     return list(set(reviewed))
 
 df = load_data()
 
-# 必要修改：使用 Session State 锁定索引，防止提交后跳转回第一个
 if 'current_index' not in st.session_state:
     st.session_state.current_index = 0
 
@@ -70,7 +69,6 @@ with st.sidebar:
         display_options = [f"{oid} {'✅' if oid in reviewed_ids else '⏳'}" for oid in raw_options]
         option_map = dict(zip(display_options, range(len(raw_options))))
         
-        # 必要修改：使用 index 锁定当前文献
         selected_display = st.selectbox(
             "选择文献：", 
             options=display_options, 
@@ -83,15 +81,24 @@ with st.sidebar:
         st.write(f"总体进度: **{len(reviewed_ids)} / {len(raw_options)}**")
 
     st.divider()
-    # 必要修改：合并当前专家文件并解决下载乱码
+    # 核心修改：导出逻辑使用 BytesIO 以彻底杜绝 Excel 乱码
     expert_path = get_expert_dir(expert_name)
     if expert_path:
         files = [os.path.join(expert_path, f) for f in os.listdir(expert_path) if f.endswith(".csv")]
         if files:
             combined_df = pd.concat([pd.read_csv(f) for f in files])
-            # 必要修改：使用 utf-8-sig 解决乱码
-            csv_data = combined_df.to_csv(index=False, encoding='utf-8-sig')
-            st.download_button("💾 下载评价汇总表", csv_data, f"results_{expert_name}.csv", "text/csv", use_container_width=True)
+            # 将数据写入字节流，显式使用 utf-8-sig
+            output = io.BytesIO()
+            combined_df.to_csv(output, index=False, encoding='utf-8-sig')
+            processed_data = output.getvalue()
+            
+            st.download_button(
+                label="💾 下载评价汇总表",
+                data=processed_data,
+                file_name=f"delphi_results_{expert_name}.csv",
+                mime="text/csv",
+                use_container_width=True
+            )
 
 # --- 4. 主界面：状态提示 ---
 if str(current_doc_id) in reviewed_ids:
@@ -101,7 +108,7 @@ else:
     st.markdown(f'<div class="status-box pending">⏳ 待处理：请阅读原始证据和AI推理结果后，对照原文结论，填写“评估量表”标签完成评分</div>',
                 unsafe_allow_html=True)
 
-# --- 5. 四标签沉浸式布局 (内容完全还原，不改动任何文字和分值) ---
+# --- 5. 四标签沉浸式布局 ---
 tab_evid, tab_ai, tab_author, tab_score = st.tabs(["📄 原始证据", "🧠 AI 推演", "📖 原文结论", "✍️ 评估量表"])
 
 with tab_evid:
@@ -118,7 +125,6 @@ with tab_score:
         st.markdown('<div class="section-header">第一部分：具体科研能力维度的定量评分 (1-10分)</div>',
                     unsafe_allow_html=True)
 
-        # --- 维度 1 ---
         st.write("1. **逻辑严密性与简约性** (评价重点：因果链条的闭环程度与逻辑效率)")
         st.markdown("""
         <div class="anchor-box">
@@ -130,7 +136,6 @@ with tab_score:
         """, unsafe_allow_html=True)
         s1 = st.slider("维度1评分", 0, 10, 0, label_visibility="collapsed")
 
-        # --- 维度 2 ---
         st.write("2. **生物学合理性与深度** (评价重点：知识准确性及是否包含“幻觉”)")
         st.markdown("""
         <div class="anchor-box">
@@ -142,7 +147,6 @@ with tab_score:
         """, unsafe_allow_html=True)
         s2 = st.slider("维度2评分", 0, 10, 0, label_visibility="collapsed")
 
-        # --- 维度 3 ---
         st.write("3. **证据整合力（含负向结果）** (评价重点：对输入线索的利用率，尤其是对阴性/非线性结果的解释)")
         st.markdown("""
         <div class="anchor-box">
@@ -154,7 +158,6 @@ with tab_score:
         """, unsafe_allow_html=True)
         s3 = st.slider("维度3评分", 0, 10, 0, label_visibility="collapsed")
 
-        # --- 维度 4 ---
         st.write("4. **转化洞察力与可行性** (评价重点：假说的原创性及干预建议的具体操作性)")
         st.markdown("""
         <div class="anchor-box">
@@ -166,64 +169,8 @@ with tab_score:
         """, unsafe_allow_html=True)
         s4 = st.slider("维度4评分", 0, 10, 0, label_visibility="collapsed")
 
-        # --- 第二部分 ---
         st.markdown('<div class="section-header">第二部分：您觉得与人类科学家相比这个模型处于什么水准 (1-10分)</div>',
                     unsafe_allow_html=True)
         st.markdown("""
         <div class="anchor-box">
-        • <b>9.0 - 10 卓越 (Exceptional)</b>：推论具备顶级期刊（Nature/Science/Cell）讨论部分的深度。能够处理极复杂的变量关系，发现人类专家易忽略的细微逻辑。<br>
-        • <b>7.0 - 8.9 优秀 (Senior Expert)</b>：达到资深教授水平。逻辑链条完整，能敏锐捕捉数据中的特异性，给出的建议具有很强的转化医学价值。<br>
-        • <b>5.0 - 6.9 合格 (Competent)</b>：达到人类博士/副教授水平。知识准确，逻辑自洽，推论结论与原论文吻合，创新性中规中矩。<br>
-        • <b>3.0 - 4.9 欠佳 (Developing)</b>：相当于初级研究助理。能进行简单归纳，但无法处理复杂多变量关系，知识调用存在碎片化。<br>
-        • <b>1.0 - 2.9 不合格 (Flawed)</b>：存在严重“AI幻觉”或科学常识错误。
-        </div>
-        """, unsafe_allow_html=True)
-        s_human = st.slider("人机对比评分", 0.0, 10.0, 0.0, step=0.1, label_visibility="collapsed")
-
-        # --- 第三部分 ---
-        st.markdown('<div class="section-header">第三部分：定性评估</div>', unsafe_allow_html=True)
-        consistency = st.selectbox("1. 一致性评价（对比该领域公认科学逻辑，AI推论整体表现为）：",
-                                   ["高度一致（几乎无偏差）", "基本一致（逻辑成立，细节略有出入）",
-                                    "存在偏差（存在关键逻辑断裂或误读）", "严重违背（存在基础科学性错误）"])
-
-        highlights = st.text_area(
-            "2. 亮点分析（请说明AI在推演过程中，哪个环节展现了超越人类基准线的洞察力？如认为没有可不答）")
-        risks = st.text_area("3. 局限与风险（含幻觉检测：请指出AI是否存在过度推断、忽略现实干扰或胡说八道环节？）")
-        value = st.text_area("4. 科学价值与转化建议（是否值得启动进一步动物实验验证、临床观察或政策试点？）")
-
-        # --- 第四部分 ---
-        st.markdown('<div class="section-header">第四部分：综合标定 (科学图灵测试倾向性提问)</div>',
-                    unsafe_allow_html=True)
-        st.write(
-            "如果您在完全双盲（不知作者身份）的情况下阅读此推论，您是否会倾向于认为这出自一位深耕该领域 10 年以上的资深科学家之手？")
-        turing_test = st.radio("选项：", ["肯定会", "可能会", "中立", "不太可能", "绝无可能"], horizontal=True,
-                               label_visibility="collapsed")
-
-        submit_button = st.form_submit_button("🚀 提交完整德尔菲评价表", use_container_width=True)
-
-# --- 6. 保存逻辑 (必要修改：使用独立文件保存) ---
-if submit_button:
-    if not expert_name:
-        st.error("⚠️ 请在左侧填写姓名后再提交。")
-    elif (s1 + s2 + s3 + s4 + s_human) == 0:
-        st.error("⚠️ 评分项不能全为0，请完成定量评分。")
-    else:
-        new_entry = {
-            "专家": expert_name,
-            "文献ID": current_doc_id,
-            "提交时间": datetime.datetime.now().strftime("%Y-%m-%d %H:%M"),
-            "1_逻辑严密性": s1, "2_生物学合理性": s2, "3_证据整合力": s3, "4_转化洞察力": s4,
-            "人机水准评分": s_human, "一致性评价": consistency, "亮点分析": highlights,
-            "局限风险分析": risks, "科学价值建议": value, "图灵测试倾向": turing_test
-        }
-        try:
-            path = get_expert_dir(expert_name)
-            filename = f"{current_doc_id}_{datetime.datetime.now().strftime('%Y%m%d_%H%M%S')}.csv"
-            pd.DataFrame([new_entry]).to_csv(os.path.join(path, filename), index=False, encoding='utf-8-sig')
-
-            st.balloons()
-            st.cache_data.clear() # 必要修改：强制刷新缓存以更新勾选状态
-            time.sleep(0.5)
-            st.rerun()
-        except Exception as e:
-            st.error(f"数据保存失败：{e}")
+        • <b>9.0 - 10 卓越 (Exceptional)</b>：推论
