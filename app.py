@@ -73,7 +73,7 @@ if current_doc_id in reviewed_ids:
     st.markdown(f'<div class="status-box completed">✅ 文献 {current_doc_id} 已评价（数据已保存）</div>',
                 unsafe_allow_html=True)
 else:
-    st.markdown(f'<div class="status-box pending">⏳ 待处理：阅读内容后请切换至“评估量表”标签完成评分</div>',
+    st.markdown(f'<div class="status-box pending">⏳ 待处理：请阅读原始证据和AI推理结果后，对照原文结论，填写“评估量表”标签完成评分</div>',
                 unsafe_allow_html=True)
 
 # --- 5. 四标签沉浸式布局 ---
