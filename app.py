@@ -13,7 +13,7 @@ supabase: Client = create_client(SUPABASE_URL, SUPABASE_KEY)
 
 # ==================== 身份识别 ====================
 query_params = st.query_params  # 新版 API
-expert_token = query_params.get("token", [None])[0]  # 取列表第一个值
+expert_token = query_params.get("token")
 
 experts_df = pd.read_excel("experts.xlsx")  # 本地存储专家名单
 
@@ -137,3 +137,4 @@ if submit_button:
             st.success("✅ 评分提交成功！")
         except Exception as e:
             st.error(f"提交失败：{e}")
+
