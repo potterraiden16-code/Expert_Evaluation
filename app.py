@@ -4,33 +4,36 @@ import datetime
 from supabase import create_client, Client
 
 # ==================== 页面布局 ====================
-st.set_page_config(layout="wide")
+st.set_page_config(layout="wide", initial_sidebar_state="collapsed")
 
-# ==================== 页面纯净化 ====================
+# ==================== 页面顶部空白调整 ====================
 st.markdown("""
 <style>
-#MainMenu {visibility: hidden;}
-footer {visibility: hidden;}
-header {visibility: hidden;}
-.stDeployButton {display:none !important;}
-[data-testid="stToolbar"] {visibility: hidden !important;}
-[data-testid="stDecoration"] {visibility: hidden !important;}
-[data-testid="stStatusWidget"] {visibility: hidden !important;}
-
-/* 尝试缩小 manage app 按钮 */
-button[aria-label="Manage app"] {
-    transform: scale(0.1);  /* 将按钮缩小 */
-    opacity: 0.1;  /* 降低透明度，使其不那么显眼 */
+body {
+    padding-top: 0px !important;  /* 减少页面顶部空白 */
 }
 </style>
 """, unsafe_allow_html=True)
 
+# ==================== 页面纯净化 ====================
+st.markdown(""" 
+<style>
+#MainMenu {visibility: hidden;}  
+footer {visibility: hidden;}  
+header {visibility: hidden;}  
+.stDeployButton {display:none !important;}  
+[data-testid="stToolbar"] {visibility: hidden !important;}  
+[data-testid="stDecoration"] {visibility: hidden !important;}  
+[data-testid="stStatusWidget"] {visibility: hidden !important;}  
+</style>
+""", unsafe_allow_html=True)
+
 # ==================== 配置 ====================
-DEBUG = False   # 本地调试=True，云端部署=False
+DEBUG = False  # 本地调试=True，云端部署=False
 
 # Supabase 配置
 SUPABASE_URL = "https://zmkcwvfvkrswechxoxwb.supabase.co"
-SUPABASE_KEY = "sb_publishable_SpD8P1R_L_kYjnvpQ3wEOA_EdRSbGB6"
+SUPABASE_KEY = "你的真实KEY"
 supabase: Client = create_client(SUPABASE_URL, SUPABASE_KEY)
 
 # ==================== 身份识别 ====================
@@ -131,30 +134,26 @@ with col2:
                  on_change=on_doc_change)
 
 with col3:
-    st.metric("评审进度", f"{len(reviewed)} / {len(raw_options)}")
+    st.write(f"进度：{len(reviewed)} / {len(raw_options)}")
 
-st.progress(len(reviewed)/len(raw_options))
-st.divider()
+# ==================== 标签页设置 ====================
+tab_evid_ai_author, tab_score = st.tabs(["📄 数据对比", "✍️ 评估量表"])
 
-# ==================== 当前文献 ====================
-current_doc_id = raw_options[st.session_state.current_index]
-row = df.iloc[st.session_state.current_index]
+with tab_evid_ai_author:
+    col1, col2, col3 = st.columns([4, 4, 4])
 
-# ==================== 内容展示 ====================
-tab_evid, tab_ai, tab_author, tab_score = st.tabs(
-    ["📄 原始证据", "🧠 AI 推演", "📖 原文结论", "✍️ 评估量表"]
-)
+    with col1:
+        st.subheader("原始证据")
+        st.text_area("原始证据", row['Evidence'], height=300, disabled=True)
 
-with tab_evid:
-    st.text_area("原始证据", row['Evidence'], height=520, disabled=True)
+    with col2:
+        st.subheader("AI 推演")
+        st.text_area("AI 推演", row['AI_Report'], height=300, disabled=True)
 
-with tab_ai:
-    st.text_area("AI 推演", row['AI_Report'], height=520, disabled=True)
+    with col3:
+        st.subheader("原文结论")
+        st.markdown(row['Author_Conclusion'])
 
-with tab_author:
-    st.markdown(row['Author_Conclusion'])
-
-# ==================== 评分表 ====================
 with tab_score:
     with st.form("review_form"):
 
@@ -220,6 +219,3 @@ if submit_button:
         st.experimental_rerun()
     except Exception as e:
         st.error(f"提交失败：{e}")
-
-
-
