@@ -127,58 +127,63 @@ with col2:
 with col3:
     st.metric("评审进度", f"{len(reviewed)} / {len(raw_options)}")
 
-st.progress(len(reviewed)/len(raw_options))
 st.divider()
 
 # ==================== 当前文献 ====================
 current_doc_id = raw_options[st.session_state.current_index]
 row = df.iloc[st.session_state.current_index]
 
-# ==================== 内容展示 ====================
-tab_evid, tab_ai, tab_author, tab_score = st.tabs(
-    ["📄 原始证据", "🧠 AI 推演", "📖 原文结论", "✍️ 评估量表"]
-)
+# ==================== 三栏并排对比 ====================
+st.markdown("## 📚 证据与结论对比")
 
-with tab_evid:
-    st.text_area("原始证据", row['Evidence'], height=520, disabled=True)
+c1, c2, c3 = st.columns(3)
 
-with tab_ai:
-    st.text_area("AI 推演", row['AI_Report'], height=520, disabled=True)
+with c1:
+    st.subheader("📄 原始证据")
+    st.text_area("", row['Evidence'], height=520, disabled=True)
 
-with tab_author:
+with c2:
+    st.subheader("🧠 AI 推演")
+    st.text_area("", row['AI_Report'], height=520, disabled=True)
+
+with c3:
+    st.subheader("📖 原文结论")
     st.markdown(row['Author_Conclusion'])
 
+st.divider()
+
 # ==================== 评分表 ====================
-with tab_score:
-    with st.form("review_form"):
+st.markdown("## ✍️ 评估量表")
 
-        st.subheader("第一部分：科研能力评分")
+with st.form("review_form"):
 
-        st.markdown("**逻辑严密性**：逻辑结构是否严谨、推理是否连贯")
-        s1 = st.slider("逻辑严密性", 0, 10, 0)
+    st.subheader("第一部分：科研能力评分")
 
-        st.markdown("**生物学合理性**：是否符合生物学机理与共识")
-        s2 = st.slider("生物学合理性", 0, 10, 0)
+    st.markdown("**逻辑严密性**：逻辑结构是否严谨、推理是否连贯")
+    s1 = st.slider("逻辑严密性", 0, 10, 0)
 
-        st.markdown("**证据整合力**：证据链是否系统完整")
-        s3 = st.slider("证据整合力", 0, 10, 0)
+    st.markdown("**生物学合理性**：是否符合生物学机理与共识")
+    s2 = st.slider("生物学合理性", 0, 10, 0)
 
-        st.markdown("**转化洞察力**：是否具备转化应用潜力")
-        s4 = st.slider("转化洞察力", 0, 10, 0)
+    st.markdown("**证据整合力**：证据链是否系统完整")
+    s3 = st.slider("证据整合力", 0, 10, 0)
 
-        st.subheader("第二部分：人机对比评分")
-        s_human = st.slider("AI 相对人类专家水平", 0.0, 10.0, 0.0, step=0.1)
+    st.markdown("**转化洞察力**：是否具备转化应用潜力")
+    s4 = st.slider("转化洞察力", 0, 10, 0)
 
-        st.subheader("第三部分：定性评价")
-        consistency = st.selectbox("一致性评价", ["高度一致", "基本一致", "存在偏差", "严重违背"])
-        highlights = st.text_area("亮点分析")
-        risks = st.text_area("局限与风险")
-        value = st.text_area("科学价值建议")
+    st.subheader("第二部分：人机对比评分")
+    s_human = st.slider("AI 相对人类专家水平", 0.0, 10.0, 0.0, step=0.1)
 
-        st.subheader("第四部分：综合判断")
-        turing_test = st.radio("图灵测试倾向", ["肯定会", "可能会", "中立", "不太可能", "绝无可能"], horizontal=True)
+    st.subheader("第三部分：定性评价")
+    consistency = st.selectbox("一致性评价", ["高度一致", "基本一致", "存在偏差", "严重违背"])
+    highlights = st.text_area("亮点分析")
+    risks = st.text_area("局限与风险")
+    value = st.text_area("科学价值建议")
 
-        submit_button = st.form_submit_button("🚀 提交评分")
+    st.subheader("第四部分：综合判断")
+    turing_test = st.radio("图灵测试倾向", ["肯定会", "可能会", "中立", "不太可能", "绝无可能"], horizontal=True)
+
+    submit_button = st.form_submit_button("🚀 提交评分")
 
 # ==================== 提交逻辑 ====================
 if submit_button:
@@ -211,7 +216,6 @@ if submit_button:
         supabase.table("reviews").insert(review_entry).execute()
         st.success("✅ 评分提交成功！")
         st.balloons()
-        st.experimental_rerun()
+        st.rerun()
     except Exception as e:
         st.error(f"提交失败：{e}")
-
