@@ -24,7 +24,7 @@ DEBUG = False   # 本地调试=True，云端部署=False
 
 # Supabase 配置
 SUPABASE_URL = "https://zmkcwvfvkrswechxoxwb.supabase.co"
-SUPABASE_KEY = "你的真实KEY"
+SUPABASE_KEY = "sb_publishable_SpD8P1R_L_kYjnvpQ3wEOA_EdRSbGB6"
 supabase: Client = create_client(SUPABASE_URL, SUPABASE_KEY)
 
 # ==================== 身份识别 ====================
@@ -214,3 +214,4 @@ if submit_button:
         st.experimental_rerun()
     except Exception as e:
         st.error(f"提交失败：{e}")
+
