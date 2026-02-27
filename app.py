@@ -21,8 +21,6 @@ iframe {display: none !important;}
 [data-testid="stToolbar"] {visibility: hidden !important;}
 [data-testid="stDecoration"] {visibility: hidden !important;}
 [data-testid="stStatusWidget"] {visibility: hidden !important;}
-</style>
-""", unsafe_allow_html=True)
 
 .stApp:after {
     content: "";
@@ -34,6 +32,11 @@ iframe {display: none !important;}
     background: white;
     z-index: 9999;
 }
+
+</style>
+""", unsafe_allow_html=True)
+
+
 
 # ==================== 配置 ====================
 DEBUG = False   # 本地调试=True，云端部署=False
@@ -215,3 +218,4 @@ if submit_button:
             st.experimental_rerun()
         except Exception as e:
             st.error(f"提交异常：{e}")
+
