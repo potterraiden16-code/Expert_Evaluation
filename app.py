@@ -25,7 +25,7 @@ iframe {display: none !important;}
 """, unsafe_allow_html=True)
 
 # ==================== 配置 ====================
-DEBUG = True   # 本地调试=True，云端部署=False
+DEBUG = False   # 本地调试=True，云端部署=False
 
 # Supabase 配置
 SUPABASE_URL = "https://zmkcwvfvkrswechxoxwb.supabase.co"
@@ -213,3 +213,4 @@ if submit_button:
                 st.error(f"⚠️ 插入失败，返回状态码: {result.get('status_code')}")
         except Exception as e:
             st.error(f"提交异常：{e}")
+
