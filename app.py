@@ -24,6 +24,17 @@ iframe {display: none !important;}
 </style>
 """, unsafe_allow_html=True)
 
+.stApp:after {
+    content: "";
+    position: fixed;
+    bottom: 0;
+    right: 0;
+    width: 160px;
+    height: 80px;
+    background: white;
+    z-index: 9999;
+}
+
 # ==================== 配置 ====================
 DEBUG = False   # 本地调试=True，云端部署=False
 
@@ -165,10 +176,9 @@ with tab_score:
 
         submit_button = st.form_submit_button("🚀 提交评分")
 
-# ==================== 提交评分（调试版） ====================
-if submit_button:
 
-    st.write("⚡ 表单已触发提交")  # 检查表单是否触发
+# ==================== 提交评分 ====================
+if submit_button:
 
     if (s1 + s2 + s3 + s4 + s_human) == 0:
         st.error("⚠️ 评分不能全为 0")
@@ -194,23 +204,14 @@ if submit_button:
         "submit_time": datetime.datetime.utcnow().isoformat()
     }
 
-    # 🔹 输出调试信息
-    st.subheader("🔹 Debug: Review Entry")
-    st.json(review_entry)
-
     if DEBUG:
-        st.info("⚡ DEBUG 模式 - 模拟插入 Supabase，不会写入数据库")
+        st.info("⚡ DEBUG 模式：未写入数据库")
+        st.json(review_entry)
     else:
         try:
-            result = supabase.table("reviews").insert(review_entry).execute()
-            st.subheader("🔹 Debug: Supabase 返回")
-            st.write(result)
-
-            if result.get("status_code") in [200, 201]:
-                st.success("✅ 评分提交成功！")
-                st.balloons()
-            else:
-                st.error(f"⚠️ 插入失败，返回状态码: {result.get('status_code')}")
+            supabase.table("reviews").insert(review_entry).execute()
+            st.success("✅ 评分提交成功！")
+            st.balloons()
+            st.experimental_rerun()
         except Exception as e:
             st.error(f"提交异常：{e}")
-
