@@ -19,8 +19,8 @@ header {visibility: hidden;}
 
 /* 尝试缩小 manage app 按钮 */
 button[aria-label="Manage app"] {
-    transform: scale(0.5);  /* 将按钮缩小 */
-    opacity: 0.5;  /* 降低透明度，使其不那么显眼 */
+    transform: scale(0.1);  /* 将按钮缩小 */
+    opacity: 0.1;  /* 降低透明度，使其不那么显眼 */
 }
 </style>
 """, unsafe_allow_html=True)
@@ -220,5 +220,6 @@ if submit_button:
         st.experimental_rerun()
     except Exception as e:
         st.error(f"提交失败：{e}")
+
 
 
