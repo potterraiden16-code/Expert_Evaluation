@@ -3,18 +3,29 @@ import pandas as pd
 import datetime
 from supabase import create_client, Client
 
+st.set_page_config(layout="wide")
+
 # ==================== 页面纯净化 ====================
 st.markdown("""
 <style>
 #MainMenu {visibility: hidden;}
 footer {visibility: hidden;}
 header {visibility: hidden;}
-.stDeployButton {display: none;}
+.stDeployButton {display:none !important;}
+
+/* 右下角 manage app */
+button[title="Manage app"] {display: none !important;}
+iframe {display: none !important;}
+
+/* 顶部工具栏 */
+[data-testid="stToolbar"] {visibility: hidden !important;}
+[data-testid="stDecoration"] {visibility: hidden !important;}
+[data-testid="stStatusWidget"] {visibility: hidden !important;}
 </style>
 """, unsafe_allow_html=True)
 
 # ==================== 配置 ====================
-DEBUG = False   # 本地调试=True，云端部署=False
+DEBUG = True   # 本地调试=True，云端部署=False
 
 # Supabase 配置
 SUPABASE_URL = "https://zmkcwvfvkrswechxoxwb.supabase.co"
@@ -123,10 +134,10 @@ tab_evid, tab_ai, tab_author, tab_score = st.tabs(
 )
 
 with tab_evid:
-    st.text_area("原始证据", value=row['Evidence'], height=420, disabled=True)
+    st.text_area("原始证据", value=row['Evidence'], height=520, disabled=True)
 
 with tab_ai:
-    st.text_area("AI 推演", value=row['AI_Report'], height=420, disabled=True)
+    st.text_area("AI 推演", value=row['AI_Report'], height=520, disabled=True)
 
 with tab_author:
     st.markdown(row['Author_Conclusion'])
