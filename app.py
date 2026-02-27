@@ -5,7 +5,7 @@ from supabase import create_client, Client
 
 # ==================== 页面布局 ====================
 st.set_page_config(layout="wide", initial_sidebar_state="collapsed")
-a
+
 # ==================== 页面顶部空白调整 ====================
 st.markdown("""
 <style>
@@ -142,6 +142,10 @@ tab_evid_ai_author, tab_score = st.tabs(["📄 数据对比", "✍️ 评估量�
 with tab_evid_ai_author:
     col1, col2, col3 = st.columns([4, 4, 4])
 
+    # 确保根据当前选择的文献获取正确的行数据
+    current_doc_id = st.session_state.display_ids[st.session_state.current_index].split(' ')[0]  # 提取ID
+    row = df[df['ID'] == current_doc_id].iloc[0]  # 从DataFrame中筛选出对应的行
+
     with col1:
         st.subheader("原始证据")
         st.text_area("原始证据", row['Evidence'], height=300, disabled=True)
@@ -219,4 +223,3 @@ if submit_button:
         st.experimental_rerun()
     except Exception as e:
         st.error(f"提交失败：{e}")
-
