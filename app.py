@@ -29,7 +29,7 @@ SUPABASE_KEY = "sb_publishable_SpD8P1R_L_kYjnvpQ3wEOA_EdRSbGB6"
 supabase: Client = create_client(SUPABASE_URL, SUPABASE_KEY)
 
 # =========================================================
-# Markdown 渲染工具
+# Markdown 工具
 # =========================================================
 def split_markdown_sections(md_text):
     pattern = r'(#{1,6} .*)'
@@ -60,7 +60,6 @@ def render_markdown_blocks(md_text):
         with st.expander(title, expanded=(title == "总览")):
             st.markdown(content)
 
-
 # =========================================================
 # 工具函数
 # =========================================================
@@ -75,14 +74,12 @@ def load_md(path):
     with open(path, "r", encoding="utf-8") as f:
         return f.read()
 
-
 # =========================================================
-# 数据索引加载
+# 数据索引
 # =========================================================
 @st.cache_data
 def load_dataset(root="dataset"):
     records = []
-
     for domain in sorted(os.listdir(root)):
         domain_path = os.path.join(root, domain)
         if not os.path.isdir(domain_path):
@@ -110,14 +107,11 @@ def load_dataset(root="dataset"):
             })
 
     df = pd.DataFrame(records)
-    df = df.sort_values(by=["domain", "order"]).reset_index(drop=True)
-    return df
-
+    return df.sort_values(by=["domain", "order"]).reset_index(drop=True)
 
 df = load_dataset()
-
 if df.empty:
-    st.error("⚠️ dataset 目录为空或结构错误")
+    st.error("⚠️ 数据集为空")
     st.stop()
 
 # =========================================================
@@ -125,7 +119,6 @@ if df.empty:
 # =========================================================
 query_params = st.query_params
 expert_token = query_params.get("token")
-
 experts_df = pd.read_excel("experts.xlsx")
 
 if DEBUG and not expert_token:
@@ -134,20 +127,17 @@ else:
     if not expert_token:
         st.error("⚠️ 访问无效")
         st.stop()
-
     match = experts_df[experts_df["token"] == expert_token]
     if match.empty:
         st.error("⚠️ 专家身份无效")
         st.stop()
-
     expert_name = match.iloc[0]["expert_name"]
 
 # =========================================================
-# Session 控制
+# Session
 # =========================================================
 if "current_index" not in st.session_state:
     st.session_state.current_index = 0
-
 
 def on_doc_change():
     st.session_state.current_index = (
@@ -155,15 +145,15 @@ def on_doc_change():
     )
 
 # =========================================================
-# 已评审记录
+# 已评审
 # =========================================================
 if DEBUG:
     reviewed = []
 else:
     try:
         reviewed = [
-            r["paper_id"]
-            for r in supabase.table("reviews")
+            r["paper_id"] for r in
+            supabase.table("reviews")
             .select("paper_id")
             .eq("expert_name", expert_name)
             .execute()
@@ -173,7 +163,7 @@ else:
         reviewed = []
 
 # =========================================================
-# 顶部状态栏
+# 顶部
 # =========================================================
 raw_ids = df["paper_id"].astype(str).tolist()
 st.session_state.display_ids = [
@@ -189,13 +179,13 @@ with c2:
         st.session_state.display_ids,
         index=st.session_state.current_index,
         key="doc_selector",
-        on_change=on_doc_change,
+        on_change=on_doc_change
     )
 with c3:
     st.metric("进度", f"{len(reviewed)} / {len(raw_ids)}")
 
 # =========================================================
-# 当前文献加载
+# 当前文献
 # =========================================================
 row = df.iloc[st.session_state.current_index]
 doc_id = row["paper_id"]
@@ -206,9 +196,6 @@ evidence = load_md(os.path.join(paper_path, "A.md"))
 author_conclusion = load_md(os.path.join(paper_path, "B.md"))
 ai_report = load_md(os.path.join(paper_path, "C.md"))
 
-# =========================================================
-# 文献头信息
-# =========================================================
 st.markdown(f"""
 ### 📄 {row['title']}
 **作者：** {row['author']}  
@@ -224,15 +211,6 @@ tab_read, tab_score = st.tabs(["📊 证据对比阅读", "✍️ 评估量表"]
 # 阅读区
 # =========================================================
 with tab_read:
-
-    st.markdown("""
-    <style>
-    .block {border-radius:12px;padding:14px;height:520px;overflow-y:auto;font-size:15px;line-height:1.6;}
-    .evid {background:#f7fbff;color:#0f172a;}
-    .ai {background:#f0fdf4;color:#064e3b;}
-    .author {background:#fff7ed;color:#7c2d12;}
-    </style>
-    """, unsafe_allow_html=True)
 
     c1, c2, c3 = st.columns(3)
 
@@ -252,7 +230,7 @@ with tab_read:
             render_markdown_blocks(author_conclusion)
 
 # =========================================================
-# 评分区
+# 评分区（完整锚点保留）
 # =========================================================
 with tab_score:
 
@@ -263,32 +241,87 @@ with tab_score:
 
     with st.form("score_form"):
 
+        # ---------- 第一部分 ----------
         st.markdown("### 🧪 第一部分：科研能力维度定量评分（1–10分）")
 
-        s1 = st.slider("逻辑严密性与简约性", 1, 10, 5, key=doc_key+"s1")
-        s2 = st.slider("生物学合理性与深度", 1, 10, 5, key=doc_key+"s2")
-        s3 = st.slider("证据整合力", 1, 10, 5, key=doc_key+"s3")
-        s4 = st.slider("转化洞察力", 1, 10, 5, key=doc_key+"s4")
+        st.markdown("""
+        **1. 逻辑严密性与简约性**  
+        *因果链条闭环程度与逻辑效率*  
+        **1–2分：** 存在逻辑断层、循环论证或路径冗长  
+        **5分：** 逻辑通顺，因果合理，符合常规科研推导  
+        **9–10分：** 因果链极度精致、简洁，无冗余推导
+        """)
+        s1 = st.slider("评分", 1, 10, 5, key=doc_key+"s1")
 
-        st.markdown("### 🧠 第二部分：与人类科学家水平对比")
+        st.markdown("""
+        **2. 生物学合理性与深度**  
+        *知识准确性 + 是否出现 AI 幻觉*  
+        **1–2分：** 出现基础常识错误或生化过程误述  
+        **5分：** 符合教科书与权威综述描述  
+        **9–10分：** 引入准确前沿/跨学科机制，深度极高
+        """)
+        s2 = st.slider("评分", 1, 10, 5, key=doc_key+"s2")
+
+        st.markdown("""
+        **3. 证据整合力（含负向结果）**  
+        *对输入线索的利用率及复杂结果解释能力*  
+        **1–2分：** 忽略关键数据，尤其是阴性结果  
+        **5分：** 合理整合主要指标，解释显著结果  
+        **9–10分：** 挖掘隐性关联，解释复杂非线性关系
+        """)
+        s3 = st.slider("评分", 1, 10, 5, key=doc_key+"s3")
+
+        st.markdown("""
+        **4. 转化洞察力与可行性**  
+        *假说原创性 + 干预建议具体性*  
+        **1–2分：** 纯属复述，或“正确的废话”  
+        **5分：** 解释合理，建议符合临床常规  
+        **9–10分：** 提出挑战性新假说，建议极具转化潜力
+        """)
+        s4 = st.slider("评分", 1, 10, 5, key=doc_key+"s4")
+
+        # ---------- 第二部分 ----------
+        st.markdown("### 🧠 第二部分：与人类科学家水平对比（1–10分）")
+
+        st.markdown("""
+        **评分参考锚点：**  
+        **9.0–10：卓越 (Exceptional)** — 顶级期刊讨论水平  
+        **7.0–8.9：优秀 (Senior Expert)** — 资深教授水平  
+        **5.0–6.9：合格 (Competent)** — 博士 / 副教授水平  
+        **3.0–4.9：欠佳 (Developing)** — 初级研究助理水平  
+        **1.0–2.9：不合格 (Flawed)** — 存在严重幻觉或科学错误
+        """)
         s_human = st.slider("人机对比评分", 1.0, 10.0, 6.0, 0.1, key=doc_key+"s5")
 
+        # ---------- 第三部分 ----------
         st.markdown("### 📝 第三部分：定性专家评估")
 
         consistency = st.radio(
-            "一致性评价",
+            "一致性评价：对比该领域公认科学逻辑，AI 推论整体表现为：",
             ["高度一致", "基本一致", "存在偏差", "严重违背"],
             key=doc_key+"s6"
         )
 
-        highlights = st.text_area("亮点分析", key=doc_key+"s7")
-        risks = st.text_area("局限与风险", key=doc_key+"s8")
-        value = st.text_area("科学价值与转化建议", key=doc_key+"s9")
+        highlights = st.text_area(
+            "亮点分析：请说明 AI 在哪些环节展现出超越人类专家基准线的洞察力（可不填）",
+            key=doc_key+"s7"
+        )
 
+        risks = st.text_area(
+            "局限与风险（含幻觉检测）：请指出是否存在过度推断、忽略现实干扰或科学性错误",
+            key=doc_key+"s8"
+        )
+
+        value = st.text_area(
+            "科学价值与转化建议：是否值得进一步开展动物实验、临床验证或政策试点？",
+            key=doc_key+"s9"
+        )
+
+        # ---------- 第四部分 ----------
         st.markdown("### 🧬 第四部分：科学图灵测试")
 
         turing_test = st.radio(
-            "若完全双盲，您是否会认为该推论出自资深科学家？",
+            "若完全双盲，您是否会认为该推论出自深耕本领域 ≥10 年的资深科学家？",
             ["肯定会", "可能会", "中立", "不太可能", "绝无可能"],
             horizontal=True,
             key=doc_key+"s10"
@@ -297,19 +330,12 @@ with tab_score:
         submit = st.form_submit_button("🚀 提交评分")
 
 # =========================================================
-# 提交逻辑
+# 提交
 # =========================================================
 if submit:
 
     if doc_id in reviewed:
-        with tab_score:
-            st.error("⚠️ 请勿重复提交")
-        st.stop()
-
-    total = s1 + s2 + s3 + s4 + s_human
-    if total == 0:
-        with tab_score:
-            st.error("⚠️ 评分不能全为 0")
+        st.error("⚠️ 请勿重复提交")
         st.stop()
 
     review_entry = {
@@ -333,5 +359,4 @@ if submit:
         st.success("✅ 提交成功")
         st.rerun()
     except Exception as e:
-        with tab_score:
-            st.error(f"❌ 提交失败：{e}")
+        st.error(f"❌ 提交失败：{e}")
