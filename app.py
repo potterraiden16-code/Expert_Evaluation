@@ -160,13 +160,18 @@ with tab_read:
     c1, c2, c3 = st.columns(3)
     with c1:
         st.markdown("### 📄 原始证据")
-        st.markdown(f"<div class='block evid'>{evidence}</div>", unsafe_allow_html=True)
+        with st.container(height=520):
+            st.markdown(evidence)
+
     with c2:
         st.markdown("### 🧠 AI 推演")
-        st.markdown(f"<div class='block ai'>{ai_report}</div>", unsafe_allow_html=True)
+        with st.container(height=520):
+            st.markdown(ai_report)
+
     with c3:
         st.markdown("### 📖 原文结论")
-        st.markdown(f"<div class='block author'>{author_conclusion}</div>", unsafe_allow_html=True)
+        with st.container(height=520):
+            st.markdown(author_conclusion)
 
 # ==================== 评分 ====================
 with tab_score:
@@ -245,3 +250,4 @@ if submit:
     except Exception as e:
         with tab_score:
             st.error(f"❌ 提交失败：{e}")
+
