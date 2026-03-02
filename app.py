@@ -1,16 +1,37 @@
 import streamlit as st
 import pandas as pd
 import datetime
-import os, json
+import os
+import json
+import re
 from supabase import create_client, Client
 
-import re
+# =========================================================
+# 页面配置
+# =========================================================
+st.set_page_config(layout="wide")
 
+st.markdown("""
+<style>
+#MainMenu, footer, header {visibility: hidden;}
+[data-testid="stToolbar"] {visibility: hidden;}
+iframe {display:none;}
+</style>
+""", unsafe_allow_html=True)
+
+# =========================================================
+# 全局配置
+# =========================================================
+DEBUG = False
+
+SUPABASE_URL = "https://zmkcwvfvkrswechxoxwb.supabase.co"
+SUPABASE_KEY = "sb_publishable_SpD8P1R_L_kYjnvpQ3wEOA_EdRSbGB6"
+supabase: Client = create_client(SUPABASE_URL, SUPABASE_KEY)
+
+# =========================================================
+# Markdown 渲染工具
+# =========================================================
 def split_markdown_sections(md_text):
-    """
-    将 markdown 按标题拆分成结构块
-    返回: [(title, content), ...]
-    """
     pattern = r'(#{1,6} .*)'
     parts = re.split(pattern, md_text)
 
@@ -32,54 +53,32 @@ def split_markdown_sections(md_text):
 
     return sections
 
+
+def render_markdown_blocks(md_text):
+    sections = split_markdown_sections(md_text)
+    for title, content in sections:
+        with st.expander(title, expanded=(title == "总览")):
+            st.markdown(content)
+
+
+# =========================================================
+# 工具函数
+# =========================================================
 def paper_sort_key(name):
     nums = re.findall(r'\d+', name)
     return int(nums[0]) if nums else 0
 
-def render_markdown_blocks(md_text):
-    sections = split_markdown_sections(md_text)
 
-    for title, content in sections:
-        with st.expander(title, expanded=(title=="总览")):
-            st.markdown(content)
+def load_md(path):
+    if not os.path.exists(path):
+        return "⚠️ 文件缺失"
+    with open(path, "r", encoding="utf-8") as f:
+        return f.read()
 
-st.set_page_config(layout="wide")
 
-# ==================== 页面纯净化 ====================
-st.markdown("""
-<style>
-#MainMenu, footer, header {visibility: hidden;}
-[data-testid="stToolbar"] {visibility: hidden;}
-iframe {display:none;}
-</style>
-""", unsafe_allow_html=True)
-
-# ==================== 配置 ====================
-DEBUG = False
-
-SUPABASE_URL = "https://zmkcwvfvkrswechxoxwb.supabase.co"
-SUPABASE_KEY = "sb_publishable_SpD8P1R_L_kYjnvpQ3wEOA_EdRSbGB6"
-supabase: Client = create_client(SUPABASE_URL, SUPABASE_KEY)
-
-# ==================== 身份 ====================
-query_params = st.query_params
-expert_token = query_params.get("token")
-
-experts_df = pd.read_excel("experts.xlsx")
-
-if DEBUG and not expert_token:
-    expert_name = st.selectbox("🛠 调试模式 - 选择专家", experts_df["expert_name"].tolist())
-else:
-    if not expert_token:
-        st.error("⚠️ 访问无效")
-        st.stop()
-    match = experts_df[experts_df["token"] == expert_token]
-    if match.empty:
-        st.error("⚠️ 专家身份无效")
-        st.stop()
-    expert_name = match.iloc[0]["expert_name"]
-
-# ==================== 数据索引 ====================
+# =========================================================
+# 数据索引加载
+# =========================================================
 @st.cache_data
 def load_dataset(root="dataset"):
     records = []
@@ -104,92 +103,128 @@ def load_dataset(root="dataset"):
             records.append({
                 "domain": domain,
                 "paper_id": paper_id,
-                "title": meta.get("title",""),
-                "author": meta.get("author",""),
+                "title": meta.get("title", ""),
+                "author": meta.get("author", ""),
                 "path": paper_path,
                 "order": paper_sort_key(paper_id)
             })
 
     df = pd.DataFrame(records)
-    df = df.sort_values(by=["domain","order"]).reset_index(drop=True)
+    df = df.sort_values(by=["domain", "order"]).reset_index(drop=True)
     return df
+
 
 df = load_dataset()
 
 if df.empty:
-    st.error("⚠️ 数据集为空，请检查 dataset 目录结构")
+    st.error("⚠️ dataset 目录为空或结构错误")
     st.stop()
 
-# ==================== Session ====================
+# =========================================================
+# 专家身份认证
+# =========================================================
+query_params = st.query_params
+expert_token = query_params.get("token")
+
+experts_df = pd.read_excel("experts.xlsx")
+
+if DEBUG and not expert_token:
+    expert_name = st.selectbox("🛠 调试模式 - 选择专家", experts_df["expert_name"].tolist())
+else:
+    if not expert_token:
+        st.error("⚠️ 访问无效")
+        st.stop()
+
+    match = experts_df[experts_df["token"] == expert_token]
+    if match.empty:
+        st.error("⚠️ 专家身份无效")
+        st.stop()
+
+    expert_name = match.iloc[0]["expert_name"]
+
+# =========================================================
+# Session 控制
+# =========================================================
 if "current_index" not in st.session_state:
     st.session_state.current_index = 0
+
 
 def on_doc_change():
     st.session_state.current_index = (
         st.session_state.display_ids.index(st.session_state.doc_selector)
     )
 
-# ==================== 已评审 ====================
+# =========================================================
+# 已评审记录
+# =========================================================
 if DEBUG:
     reviewed = []
 else:
     try:
-        reviewed = [r['paper_id'] for r in supabase.table("reviews")
-                    .select("paper_id")
-                    .eq("expert_name", expert_name)
-                    .execute()
-                    .data]
+        reviewed = [
+            r["paper_id"]
+            for r in supabase.table("reviews")
+            .select("paper_id")
+            .eq("expert_name", expert_name)
+            .execute()
+            .data
+        ]
     except:
         reviewed = []
 
-# ==================== 顶部 ====================
-raw_ids = df['paper_id'].astype(str).tolist()
+# =========================================================
+# 顶部状态栏
+# =========================================================
+raw_ids = df["paper_id"].astype(str).tolist()
 st.session_state.display_ids = [
     f"{oid} {'✅' if oid in reviewed else '⏳'}" for oid in raw_ids
 ]
 
-c1, c2, c3 = st.columns([2,6,2])
+c1, c2, c3 = st.columns([2, 6, 2])
 with c1:
     st.metric("专家", expert_name)
 with c2:
-    st.selectbox("选择文献",
-                 st.session_state.display_ids,
-                 index=st.session_state.current_index,
-                 key="doc_selector",
-                 on_change=on_doc_change)
+    st.selectbox(
+        "选择文献",
+        st.session_state.display_ids,
+        index=st.session_state.current_index,
+        key="doc_selector",
+        on_change=on_doc_change,
+    )
 with c3:
     st.metric("进度", f"{len(reviewed)} / {len(raw_ids)}")
 
-# ==================== 当前文献 ====================
+# =========================================================
+# 当前文献加载
+# =========================================================
 row = df.iloc[st.session_state.current_index]
 doc_id = row["paper_id"]
 paper_path = row["path"]
-
 doc_key = f"doc_{doc_id}_"
-
-# ==================== 文件读取 ====================
-def load_md(path):
-    if not os.path.exists(path):
-        return "⚠️ 文件缺失"
-    with open(path, "r", encoding="utf-8") as f:
-        return f.read()
 
 evidence = load_md(os.path.join(paper_path, "A.md"))
 author_conclusion = load_md(os.path.join(paper_path, "B.md"))
 ai_report = load_md(os.path.join(paper_path, "C.md"))
 
-# ==================== 文献头部信息 ====================
+# =========================================================
+# 文献头信息
+# =========================================================
 st.markdown(f"""
 ### 📄 {row['title']}
 **作者：** {row['author']}  
 **领域：** {row['domain']}  
 """)
 
-# ==================== Tabs ====================
+# =========================================================
+# Tabs
+# =========================================================
 tab_read, tab_score = st.tabs(["📊 证据对比阅读", "✍️ 评估量表"])
 
-# ==================== 阅读 ====================
+# =========================================================
+# 阅读区
+# =========================================================
 with tab_read:
+
     st.markdown("""
     <style>
     .block {border-radius:12px;padding:14px;height:520px;overflow-y:auto;font-size:15px;line-height:1.6;}
@@ -200,22 +235,25 @@ with tab_read:
     """, unsafe_allow_html=True)
 
     c1, c2, c3 = st.columns(3)
-   with c1:
-    st.markdown("### 📄 原始证据")
-    with st.container(height=520):
-        render_markdown_blocks(evidence)
 
-   with c2:
-    st.markdown("### 🧠 AI 推演")
-    with st.container(height=520):
-        render_markdown_blocks(ai_report)
+    with c1:
+        st.markdown("### 📄 原始证据")
+        with st.container(height=520):
+            render_markdown_blocks(evidence)
 
-   with c3:
-    st.markdown("### 📖 原文结论")
-    with st.container(height=520):
-        render_markdown_blocks(author_conclusion)
+    with c2:
+        st.markdown("### 🧠 AI 推演")
+        with st.container(height=520):
+            render_markdown_blocks(ai_report)
 
-# ==================== 评分 ====================
+    with c3:
+        st.markdown("### 📖 原文结论")
+        with st.container(height=520):
+            render_markdown_blocks(author_conclusion)
+
+# =========================================================
+# 评分区
+# =========================================================
 with tab_score:
 
     st.markdown("## ✍️ 评估量表")
@@ -237,8 +275,11 @@ with tab_score:
 
         st.markdown("### 📝 第三部分：定性专家评估")
 
-        consistency = st.radio("一致性评价",
-            ["高度一致", "基本一致", "存在偏差", "严重违背"], key=doc_key+"s6")
+        consistency = st.radio(
+            "一致性评价",
+            ["高度一致", "基本一致", "存在偏差", "严重违背"],
+            key=doc_key+"s6"
+        )
 
         highlights = st.text_area("亮点分析", key=doc_key+"s7")
         risks = st.text_area("局限与风险", key=doc_key+"s8")
@@ -255,7 +296,9 @@ with tab_score:
 
         submit = st.form_submit_button("🚀 提交评分")
 
-# ==================== 提交 ====================
+# =========================================================
+# 提交逻辑
+# =========================================================
 if submit:
 
     if doc_id in reviewed:
@@ -292,6 +335,3 @@ if submit:
     except Exception as e:
         with tab_score:
             st.error(f"❌ 提交失败：{e}")
-
-
-
