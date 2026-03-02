@@ -4,6 +4,12 @@ import datetime
 import os, json
 from supabase import create_client, Client
 
+import re
+
+def paper_sort_key(name):
+    nums = re.findall(r'\d+', name)
+    return int(nums[0]) if nums else 0
+
 st.set_page_config(layout="wide")
 
 # ==================== 页面纯净化 ====================
@@ -45,12 +51,12 @@ else:
 def load_dataset(root="dataset"):
     records = []
 
-    for domain in os.listdir(root):
+    for domain in sorted(os.listdir(root)):
         domain_path = os.path.join(root, domain)
         if not os.path.isdir(domain_path):
             continue
 
-        for paper_id in os.listdir(domain_path):
+        for paper_id in sorted(os.listdir(domain_path), key=paper_sort_key):
             paper_path = os.path.join(domain_path, paper_id)
             if not os.path.isdir(paper_path):
                 continue
@@ -67,10 +73,13 @@ def load_dataset(root="dataset"):
                 "paper_id": paper_id,
                 "title": meta.get("title",""),
                 "author": meta.get("author",""),
-                "path": paper_path
+                "path": paper_path,
+                "order": paper_sort_key(paper_id)
             })
 
-    return pd.DataFrame(records)
+    df = pd.DataFrame(records)
+    df = df.sort_values(by=["domain","order"]).reset_index(drop=True)
+    return df
 
 df = load_dataset()
 
@@ -250,4 +259,5 @@ if submit:
     except Exception as e:
         with tab_score:
             st.error(f"❌ 提交失败：{e}")
+
 
