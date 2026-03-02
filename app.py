@@ -6,9 +6,42 @@ from supabase import create_client, Client
 
 import re
 
+def split_markdown_sections(md_text):
+    """
+    将 markdown 按标题拆分成结构块
+    返回: [(title, content), ...]
+    """
+    pattern = r'(#{1,6} .*)'
+    parts = re.split(pattern, md_text)
+
+    sections = []
+    current_title = "总览"
+    current_content = ""
+
+    for part in parts:
+        if re.match(r'#{1,6} ', part):
+            if current_content.strip():
+                sections.append((current_title, current_content.strip()))
+            current_title = part.replace("#", "").strip()
+            current_content = ""
+        else:
+            current_content += part
+
+    if current_content.strip():
+        sections.append((current_title, current_content.strip()))
+
+    return sections
+
 def paper_sort_key(name):
     nums = re.findall(r'\d+', name)
     return int(nums[0]) if nums else 0
+
+def render_markdown_blocks(md_text):
+    sections = split_markdown_sections(md_text)
+
+    for title, content in sections:
+        with st.expander(title, expanded=(title=="总览")):
+            st.markdown(content)
 
 st.set_page_config(layout="wide")
 
@@ -167,20 +200,20 @@ with tab_read:
     """, unsafe_allow_html=True)
 
     c1, c2, c3 = st.columns(3)
-    with c1:
-        st.markdown("### 📄 原始证据")
-        with st.container(height=520):
-            st.markdown(evidence)
+   with c1:
+    st.markdown("### 📄 原始证据")
+    with st.container(height=520):
+        render_markdown_blocks(evidence)
 
-    with c2:
-        st.markdown("### 🧠 AI 推演")
-        with st.container(height=520):
-            st.markdown(ai_report)
+   with c2:
+    st.markdown("### 🧠 AI 推演")
+    with st.container(height=520):
+        render_markdown_blocks(ai_report)
 
-    with c3:
-        st.markdown("### 📖 原文结论")
-        with st.container(height=520):
-            st.markdown(author_conclusion)
+   with c3:
+    st.markdown("### 📖 原文结论")
+    with st.container(height=520):
+        render_markdown_blocks(author_conclusion)
 
 # ==================== 评分 ====================
 with tab_score:
@@ -259,5 +292,6 @@ if submit:
     except Exception as e:
         with tab_score:
             st.error(f"❌ 提交失败：{e}")
+
 
 
